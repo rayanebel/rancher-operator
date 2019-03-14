@@ -3,7 +3,7 @@ package autoproject
 import (
 	"context"
 
-	rancheroperatorv1alpha1 "github.com/barpilot/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
+	rancheroperatorv1alpha1 "gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

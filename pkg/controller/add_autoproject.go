@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/barpilot/rancher-operator/pkg/controller/autoproject"
+	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/controller/autoproject"
 )
 
 func init() {

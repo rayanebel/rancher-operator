@@ -7,8 +7,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/barpilot/rancher-operator/pkg/apis"
-	"github.com/barpilot/rancher-operator/pkg/controller"
+	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/apis"
+	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/controller"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"

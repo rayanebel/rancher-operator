@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/barpilot/rancher-operator/pkg/controller/automulticlusterapp"
+	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/controller/automulticlusterapp"
 )
 
 func init() {

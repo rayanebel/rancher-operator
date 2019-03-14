@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/barpilot/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
+	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
 )
 
 func init() {
