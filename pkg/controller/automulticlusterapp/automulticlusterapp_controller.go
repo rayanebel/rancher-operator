@@ -139,7 +139,7 @@ func (r *ReconcileAutoMultiClusterApp) Reconcile(request reconcile.Request) (rec
 
 	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
 	// Result is empty but we have the resources present on the cluster.
-	fmt.Println("---SECOND Try using default client---")
+	fmt.Println("---SECOND Try custom client---")
 	reqLogger.Info("List projects", "projects", len(projects2.Items))
 
 	return reconcile.Result{}, nil
