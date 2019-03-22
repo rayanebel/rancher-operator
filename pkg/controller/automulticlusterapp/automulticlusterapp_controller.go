@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	rancheroperatorv1alpha1 "gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
+	rancheroperatorv1alpha1 "gitlab.thalesdigital.io/core-kube/rancher-operator/pkg/apis/rancheroperator/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -20,10 +22,6 @@ import (
 )
 
 var log = logf.Log.WithName("controller_automulticlusterapp")
-
-const (
-	RancherGlobalNamespace = "cattle-global-data"
-)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -49,57 +47,10 @@ func add(mgr manager.Manager, r *ReconcileAutoMultiClusterApp) error {
 		return err
 	}
 
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
 	// Watch for changes to primary resource AutoMultiClusterApp
+	// This resources is an APIS object for this controller created with operator sdk
 	err = c.Watch(&source.Kind{Type: &rancheroperatorv1alpha1.AutoMultiClusterApp{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &managementrancherv3.Project{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			apps := []reconcile.Request{}
-
-			// if _, ok := a.Meta.GetLabels()["autoproject/displayname"]; !ok {
-			// 	log.Info("Project without good label")
-			// 	return apps
-			// }
-
-			autoMultiClusterApps := &rancheroperatorv1alpha1.AutoMultiClusterAppList{}
-			err := r.client.List(context.TODO(), &client.ListOptions{Namespace: ""}, autoMultiClusterApps)
-			if err != nil {
-				return apps
-			}
-			for _, app := range autoMultiClusterApps.Items {
-				apps = append(apps, reconcile.Request{NamespacedName: types.NamespacedName{
-					Name:      app.Name,
-					Namespace: "",
-				}})
-			}
-			return apps
-		}),
-	})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &managementrancherv3.MultiClusterApp{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			apps := []reconcile.Request{}
-
-			autoMultiClusterApps := &rancheroperatorv1alpha1.AutoMultiClusterAppList{}
-			err := r.client.List(context.TODO(), &client.ListOptions{Namespace: ""}, autoMultiClusterApps)
-			if err != nil {
-				return apps
-			}
-			for _, app := range autoMultiClusterApps.Items {
-				apps = append(apps, reconcile.Request{NamespacedName: types.NamespacedName{
-					Name:      app.Name,
-					Namespace: "",
-				}})
-			}
-			return apps
-		}),
-	})
 	if err != nil {
 		return err
 	}
@@ -134,66 +85,62 @@ func (r *ReconcileAutoMultiClusterApp) Reconcile(request reconcile.Request) (rec
 
 	reqLogger.Info("Reconciling AutoMultiClusterApp")
 
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
 	// Fetch the AutoMultiClusterApp instance
+	// !!!! Here we have a result not empty even if it's not a core resources !!!!
 	instance := &rancheroperatorv1alpha1.AutoMultiClusterApp{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	projects := &managementrancherv3.ProjectList{}
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
+	// Now let's try to list items for a Third party Resources (From Rancher)
+	// https://github.com/rancher/types/tree/master/apis/management.cattle.io/v3
+	// We add the third party resource by following the documentation :
+	// https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#adding-3rd-party-resources-to-your-operator
 
-	opt := &client.ListOptions{}
+	projects := &managementrancherv3.ProjectList{}
+	opt := &client.ListOptions{
+		Raw: &metav1.ListOptions{
+			ResourceVersion: "0",
+		},
+	}
 	opt.InNamespace("")
-	opt.SetLabelSelector(instance.Spec.ProjectSelector)
 
 	if err := r.client.List(ctx, opt, projects); err != nil {
 		reqLogger.Info("Failed to list projects")
 		return reconcile.Result{}, err
 	}
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
+	// With default client list is always empty (ONLY when we use a third party resource)
+	// With Core resources (e.g POD) it's working.
+	fmt.Println("---First Try using default client---")
+	reqLogger.Info("List projects", "project", len(projects.Items))
 
-	reqLogger.Info("List projects", "clusters", projects)
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
+	// Now let's try to create another client by following documentatiion :
+	//https://github.com/operator-framework/operator-sdk/blob/master/doc/user/client.md#non-default-client
+	cfg, _ := config.GetConfig()
+	c, _ := client.New(cfg, client.Options{
+		Scheme: r.scheme,
+	})
 
-	// Check if this Pod already exists
-	found := &managementrancherv3.MultiClusterApp{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: instance.Spec.MultiClusterApp, Namespace: RancherGlobalNamespace}, found)
-	if err == nil {
-		reqLogger.Info("Updating multiClusterApp", "App", found.Name)
+	projects2 := &managementrancherv3.ProjectList{}
+	opts := &client.ListOptions{}
 
-		for _, project := range projects.Items {
-			targetName := fmt.Sprintf("%s:%s", project.Spec.ClusterName, project.Name)
-
-			alreadyThere := false
-			for _, target := range found.Spec.Targets {
-				if target.ProjectName == targetName {
-					alreadyThere = true
-					break
-				}
-			}
-
-			if !alreadyThere {
-				reqLogger.Info("Add target", "targetName", targetName)
-				found.Spec.Targets = append(found.Spec.Targets, managementrancherv3.Target{ProjectName: targetName})
-			}
-		}
-
-		if err := r.client.Update(ctx, found); err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
-	} else if errors.IsNotFound(err) {
-		reqLogger.Info("multiClusterApp doesn't exists", "App", instance.Spec.MultiClusterApp)
+	if err := c.List(ctx, opts, projects2); err != nil {
+		reqLogger.Info("Failed to list projects")
+		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, err
 
-	// // Pod already exists - don't requeue
-	// reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
-	// return reconcile.Result{}, nil
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
+	// Result is empty but we have the resources present on the cluster.
+	fmt.Println("---SECOND Try using default client---")
+	reqLogger.Info("List projects", "projects", len(projects2.Items))
+
+	return reconcile.Result{}, nil
 }

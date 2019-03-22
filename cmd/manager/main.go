@@ -7,11 +7,11 @@ import (
 	"os"
 	"runtime"
 
-	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/apis"
-	"gitlab.thalesdigital.io/core-kube/rancher/rancher-operator/pkg/controller"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"gitlab.thalesdigital.io/core-kube/rancher-operator/pkg/apis"
+	"gitlab.thalesdigital.io/core-kube/rancher-operator/pkg/controller"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -74,6 +74,12 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
+
+	// !!! NOTE FOR OPERATOR SDK TEAMS !!!
+	// We add the third party resource by following the documentation :
+	// https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#adding-3rd-party-resources-to-your-operator
+	// 3rd party resources ccome from Rancher :
+	// https://github.com/rancher/types/tree/master/apis/management.cattle.io/v3
 
 	if err := managementrancherv3.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
